@@ -1,47 +1,47 @@
-import numpy as np
-import json, os
+import json
+import os
 
-def get_dir_from_user(title='Select Zhang data directory'):
+import numpy as np
+
+
+def get_dir_from_user(title='Select data directory'):
     import tkinter as tk
     import tkinter.filedialog
     root = tk.Tk()
     root.withdraw()
     return tk.filedialog.askdirectory(title=title) + '/'
 
+
 def load_config():
     global config
     if os.path.exists('./config.json'):
         changed = False
-        with open('./config.json','r') as config_file:
+        with open('./config.json', 'r') as config_file:
             config = json.load(config_file)
-            if not os.path.isdir(config['zhang_data_folder']):
+            if not os.path.isdir(config['data_folder']):
                 changed = True
-                config['zhang_data_folder'] = get_dir_from_user()
+                config['data_folder'] = get_dir_from_user()
         if changed:
-            with open('./config.json','w') as config_file:
-                json.dump(config,config_file,indent=4)
+            with open('./config.json', 'w') as config_file:
+                json.dump(config, config_file, indent=4)
     else:
-        config = {'data_folder': '',
+        config = {'data_folder': './data/',
                   'raw_folder': '',
                   'results_folder': './results/',
-                  'cachedir': './joblib/',
-                  'zhang_data_folder': get_dir_from_user()}
-        with open('./config.json','w') as config_file:
-            json.dump(config,config_file,indent=4)
+                  'cachedir': './joblib/'}
+        if not os.path.isdir(config['data_folder']):
+            config['data_folder'] = get_dir_from_user()
+        with open('./config.json', 'w') as config_file:
+            json.dump(config, config_file, indent=4)
     if not os.path.exists(config['results_folder']):
         os.mkdir(config['results_folder'])
 
+
 load_config()
 results_folder = config['results_folder']
- 
-def load_zhang_data():
-    from scipy.io import loadmat
-    even = loadmat(config['zhang_data_folder']+'averageDataEven.mat')
-    odd = loadmat(config['zhang_data_folder']+'averageDataOdd.mat')
-    return even['dataEven'].T,odd['dataOdd'].T
 
-def load_zhang_data_st():
-    from scipy.io import loadmat
-    data = loadmat(config['zhang_data_folder']+'averageData.mat')
-    st = loadmat(config['zhang_data_folder']+'singleTrials.mat')
-    return data['dataAll'].T,st['temp'][np.newaxis,:,2:]
+
+def load_single_trial_data(tSSS_realignment=False):
+    fn = config['data_folder'] + ("single_trial_tSSS.npz" if tSSS_realignment else "single_trial_no_tSSS.npz")
+    data = np.load(fn, allow_pickle=True)
+    return data["X"], data["y"]
