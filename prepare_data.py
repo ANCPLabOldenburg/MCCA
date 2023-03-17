@@ -28,7 +28,7 @@ def load_config():
         config = {'data_folder': './data/',
                   'raw_folder': '',
                   'results_folder': './results/',
-                  'cachedir': './joblib/'}
+                  'cache_dir': './joblib/'}
         if not os.path.isdir(config['data_folder']):
             config['data_folder'] = get_dir_from_user()
         with open('./config.json', 'w') as config_file:
@@ -37,11 +37,12 @@ def load_config():
         os.mkdir(config['results_folder'])
 
 
+config = {}
 load_config()
 results_folder = config['results_folder']
 
 
-def load_single_trial_data(tSSS_realignment=False):
-    fn = config['data_folder'] + ("single_trial_tSSS.npz" if tSSS_realignment else "single_trial_no_tSSS.npz")
+def load_single_trial_data(tsss_realignment=False):
+    fn = config['data_folder'] + ("single_trial_tSSS.npz" if tsss_realignment else "single_trial_no_tSSS.npz")
     data = np.load(fn, allow_pickle=True)
     return data["X"], data["y"]

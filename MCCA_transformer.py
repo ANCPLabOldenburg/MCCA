@@ -13,18 +13,16 @@ class MCCATransformer(BaseEstimator, TransformerMixin):
 
         n_components_mcca (int): Number of MCCA components to retain (default 10)
 
-        reg (bool): Whether to add regularization. (default False)
-
         r (int/float): Regularization strength. (default 0)
 
         nested_cv (bool): If true, use nested cross-validation for new subjects fitted with fit_transform_online.
                           (default True)
     """
 
-    def __init__(self, n_components_pca=50, n_components_mcca=10, reg=False, r=0, nested_cv=True):
+    def __init__(self, n_components_pca=50, n_components_mcca=10, r=0, nested_cv=True):
         """ Init. """
-        self.MCCA = MCCA(n_components_pca, n_components_mcca, reg, r, False)
-        self.MCCA_new = MCCA(n_components_pca, n_components_mcca, reg, r, True)
+        self.MCCA = MCCA(n_components_pca, n_components_mcca, r, False)
+        self.MCCA_new_subject = MCCA(n_components_pca, n_components_mcca, r, True)
         self.nested_cv = nested_cv
         self.cca_averaged = None
 
@@ -65,11 +63,11 @@ class MCCATransformer(BaseEstimator, TransformerMixin):
                                  'training data before calling fit_online')
         data_averaged = _compute_prototypes(X, y)
         # Calculate PCA for new subject
-        pca_averaged = self.MCCA_new.obtain_mcca(data_averaged[np.newaxis])
+        pca_averaged = self.MCCA_new_subject.obtain_mcca(data_averaged[np.newaxis])
         pca_averaged = np.squeeze(pca_averaged)
         # Fit PCA of the new subject to average CCA from training data
-        self.MCCA_new.weights_mcca = np.dot(np.linalg.pinv(pca_averaged), self.cca_averaged)[np.newaxis]
-        self.MCCA_new.mcca_fitted = True
+        self.MCCA_new_subject.mcca_weights = np.dot(np.linalg.pinv(pca_averaged), self.cca_averaged)[np.newaxis]
+        self.MCCA_new_subject.mcca_fitted = True
         return self
 
     def transform_online(self, X):
@@ -77,7 +75,7 @@ class MCCATransformer(BaseEstimator, TransformerMixin):
         Transform data from a new subject from sensor to CCA dimensions, and 
         flatten time and CCA dimensions for the classifier.
         """
-        X = self.MCCA_new.transform_trials(X)
+        X = self.MCCA_new_subject.transform_trials(X)
         return X.reshape((X.shape[0], -1))
 
     def fit_transform_online(self, X, y):
@@ -108,7 +106,7 @@ class MCCATransformer(BaseEstimator, TransformerMixin):
         Transform data from a new subject from sensor to PCA dimensions, and 
         flatten time and PCA dimensions for the classifier.
         """
-        X = self.MCCA_new.transform_trials_pca(X)
+        X = self.MCCA_new_subject.transform_trials_pca(X)
         return X.reshape((X.shape[0], -1))
 
 

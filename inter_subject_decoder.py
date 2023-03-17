@@ -5,13 +5,13 @@ from joblib import Parallel, delayed
 from sklearn.linear_model import LogisticRegression, LogisticRegressionCV
 from sklearn.metrics import balanced_accuracy_score
 from sklearn.model_selection import StratifiedShuffleSplit
-import xgboost as xgb
+# import xgboost as xgb
 
 import prepare_data
 from MCCA_transformer import MCCATransformer
 
 
-def inter_subject_decoder(n_components_pca=50, n_components_mcca=10, reg=False, r=0, tSSS_realignment=False,
+def inter_subject_decoder(n_components_pca=50, n_components_mcca=10, r=0, tsss_realignment=False,
                           save_fn='online', folder="inter_subject", new_subject_trials='nested_cv', mode='MCCA'):
     """ Inter-subject decoder using leave-one-subject-out cross-validation
 
@@ -28,11 +28,9 @@ def inter_subject_decoder(n_components_pca=50, n_components_mcca=10, reg=False, 
 
         n_components_mcca (int): Number of MCCA components to retain (default 10)
 
-        reg (bool): Whether to add regularization. (default False)
-
         r (int/float): Regularization strength. (default 0)
 
-        tSSS_realignment (bool): Whether to use tSSS realignment
+        tsss_realignment (bool): Whether to use tSSS realignment
 
         save_fn (str): Filename to save results
 
@@ -52,11 +50,11 @@ def inter_subject_decoder(n_components_pca=50, n_components_mcca=10, reg=False, 
     save_folder = prepare_data.results_folder + folder + '/'
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
-    reg_str = '_reg' + str(r) if reg else ''
+    reg_str = '_reg' + str(r) if r else ''
     save = save_folder + save_fn + reg_str + '.npz'
     print(save)
 
-    X, y = prepare_data.load_single_trial_data(tSSS_realignment=tSSS_realignment)
+    X, y = prepare_data.load_single_trial_data(tsss_realignment=tsss_realignment)
 
     n_subjects = y.shape[0]
     y_true_all = []
@@ -64,13 +62,13 @@ def inter_subject_decoder(n_components_pca=50, n_components_mcca=10, reg=False, 
     BAs = []
 
     for i in range(n_subjects):
-        X_train, X_test, y_train, y_test = _transform_data(X, y, i, reg, r, n_components_pca, n_components_mcca, mode,
+        X_train, X_test, y_train, y_test = _transform_data(X, y, i, r, n_components_pca, n_components_mcca, mode,
                                                            new_subject_trials)
-        # clf = LogisticRegression(multi_class='ovr', solver='liblinear', penalty='l2', random_state=0)
+        clf = LogisticRegression(multi_class='ovr', solver='liblinear', penalty='l2', random_state=0)
         # clf = LogisticRegression(multi_class='multinomial', solver='lbfgs', penalty='l2', random_state=0)
         # model = xgb.XGBClassifier(n_jobs=1)
         # clf = GridSearchCV(model, {"max_depth": [2, 4], "n_estimators": [50, 100]}, n_jobs=32)
-        clf = xgb.XGBClassifier(n_jobs=32)
+        # clf = xgb.XGBClassifier(n_jobs=32)
         clf.fit(X_train, y_train)
         y_pred = clf.predict(X_test)
         y_true_all.append(y_test)
@@ -83,7 +81,7 @@ def inter_subject_decoder(n_components_pca=50, n_components_mcca=10, reg=False, 
     np.savez(save, y_true=y_true_all, y_pred=y_pred_all, scores=BAs)
 
 
-def _transform_data(X, y, left_out_subject, reg, r, n_components_pca, n_components_mcca, mode='MCCA',
+def _transform_data(X, y, left_out_subject, r, n_components_pca, n_components_mcca, mode='MCCA',
                     new_subject_trials='nested_cv', permute=False, seed=0):
     """
     Apply MCCA to averaged data from all but one subjects. MCCA projection
@@ -100,8 +98,6 @@ def _transform_data(X, y, left_out_subject, reg, r, n_components_pca, n_componen
         n_components_pca (int): Number of PCA components to retain for each subject (default 50)
 
         n_components_mcca (int): Number of MCCA components to retain (default 10)
-
-        reg (bool): Whether to add regularization. (default False)
 
         r (int/float): Regularization strength. (default 0)
 
@@ -138,7 +134,7 @@ def _transform_data(X, y, left_out_subject, reg, r, n_components_pca, n_componen
         y = _random_permutation(y, seed)
     n_subjects = y.shape[0]
     leave_one_out = np.setdiff1d(np.arange(n_subjects), left_out_subject)
-    transformer = MCCATransformer(n_components_pca, n_components_mcca, reg, r, new_subject_trials == 'nested_cv')
+    transformer = MCCATransformer(n_components_pca, n_components_mcca, r, new_subject_trials == 'nested_cv')
     if mode == 'MCCA':
         X_train = transformer.fit_transform(X[leave_one_out], y[leave_one_out], )
         y_train = np.concatenate(y[leave_one_out], axis=0)
@@ -199,8 +195,8 @@ def _standardize(x, axes=(2,)):
     return (x - mean_) / std_
 
 
-def permutation_test(n_permutations, start_id=0, n_components_pca=50, n_components_mcca=10, reg=False, r=0,
-                     tSSS_realignment=False, save_fn='permutation', n_jobs=-1):
+def permutation_test(n_permutations, start_id=0, n_components_pca=50, n_components_mcca=10, r=0,
+                     tsss_realignment=False, save_fn='permutation', n_jobs=-1):
     """ Parallelized permutation test of inter-subject decoder
 
     Parameters:
@@ -212,11 +208,9 @@ def permutation_test(n_permutations, start_id=0, n_components_pca=50, n_componen
 
         n_components_mcca (int): Number of MCCA components to retain (default 10)
 
-        reg (bool): Whether to add regularization. (default False)
-
         r (int/float): Regularization strength. (default 0)
 
-        tSSS_realignment (bool): Whether to use tSSS realignment
+        tsss_realignment (bool): Whether to use tSSS realignment
 
         save_fn (str): Filename to save results
 
@@ -227,9 +221,9 @@ def permutation_test(n_permutations, start_id=0, n_components_pca=50, n_componen
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
 
-    X, y = prepare_data.load_single_trial_data(tSSS_realignment=tSSS_realignment)
+    X, y = prepare_data.load_single_trial_data(tsss_realignment=tsss_realignment)
     save_path_observed = save_folder + save_fn + '_observed.npz'
-    _leave_one_out_cv(X, y, False, None, save_path_observed, n_components_pca, n_components_mcca, reg, r)
+    _leave_one_out_cv(X, y, False, None, save_path_observed, n_components_pca, n_components_mcca, r)
 
     from joblib import dump, load
     mmap_fn = prepare_data.results_folder + 'permutation_test/temp/X.mmap'
@@ -241,24 +235,22 @@ def permutation_test(n_permutations, start_id=0, n_components_pca=50, n_componen
     save_path = save_folder + save_fn + '_perm%d.npz'
     Parallel(n_jobs=n_jobs, backend='loky', verbose=100, mmap_mode='r') \
         (delayed(_leave_one_out_cv)(X, y, True, i + start_id, save_path, n_components_pca,
-                                    n_components_mcca, reg, r) for i in range(n_permutations))
+                                    n_components_mcca, r) for i in range(n_permutations))
 
 
-def _leave_one_out_cv(X, y, perm, seed, save, n_components_pca, n_components_mcca, reg, r):
+def _leave_one_out_cv(X, y, perm, seed, save, n_components_pca, n_components_mcca, r):
     """ Wraps leave-one-subject-out cross-validation loop for parallelization in permutation test. """
     if perm:
         save = save % seed
-    #    print(save)
     if os.path.exists(save):
         print('File already exists: ' + save)
         return
-    #    print('Starting iteration '+str(seed))
     n_subjects = y.shape[0]
     y_true_all = []
     y_pred_all = []
     BAs = []
     for i in range(n_subjects):
-        X_train, X_test, y_train, y_test = _transform_data(X, y, i, reg, r, n_components_pca, n_components_mcca,
+        X_train, X_test, y_train, y_test = _transform_data(X, y, i, r, n_components_pca, n_components_mcca,
                                                            permute=perm, seed=seed)
         clf = LogisticRegression(multi_class='ovr', solver='liblinear', penalty='l2', random_state=0)
         # clf = LogisticRegression(multi_class='multinomial', solver='lbfgs', penalty='l2', random_state=0)

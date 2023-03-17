@@ -9,7 +9,7 @@ import prepare_data
 from MCCA import MCCA
 
 
-def intra_subject_decoder(n_components_pca=50, n_components_mcca=10, reg=False, r=0, tSSS_realignment=False, n_folds=5,
+def intra_subject_decoder(n_components_pca=50, n_components_mcca=10, r=0, tsss_realignment=False, n_folds=5,
                           save_fn='intra_subject', mode='MCCA'):
     """
     Splits data from each subject into 80% training and 20% testing. MCCA is applied
@@ -22,11 +22,9 @@ def intra_subject_decoder(n_components_pca=50, n_components_mcca=10, reg=False, 
 
         n_components_mcca (int): Number of MCCA components to retain (default 10)
 
-        reg (bool): Whether to add regularization. (default False)
-
         r (int/float): Regularization strength. (default 0)
 
-        tSSS_realignment (bool): Whether to use tSSS realignment
+        tsss_realignment (bool): Whether to use tSSS realignment
 
         n_folds (int): Number of cross-validation folds
 
@@ -38,7 +36,7 @@ def intra_subject_decoder(n_components_pca=50, n_components_mcca=10, reg=False, 
     save_path = prepare_data.results_folder + 'intra_subject/'
     if not os.path.exists(save_path):
         os.makedirs(save_path)
-    X, y, train, test, data_averaged = _load_data(tSSS_realignment=tSSS_realignment, n_folds=n_folds)
+    X, y, train, test, data_averaged = _load_data(tsss_realignment=tsss_realignment, n_folds=n_folds)
     y_true_all = []
     y_pred_all = []
     BAs = []
@@ -46,11 +44,11 @@ def intra_subject_decoder(n_components_pca=50, n_components_mcca=10, reg=False, 
     for i in range(n_subjects):
         for j in range(n_folds):
             if mode == 'MCCA':
-                mcca = MCCA(n_components_pca, n_components_mcca, reg, r)
+                mcca = MCCA(n_components_pca, n_components_mcca, r)
                 mcca.obtain_mcca(data_averaged[j])
                 X_mcca = mcca.transform_trials(X[i], subject=i).reshape((len(y[i]), -1))
             elif mode == 'PCA':
-                mcca = MCCA(n_components_pca, n_components_mcca, reg, r, pca_only=True)
+                mcca = MCCA(n_components_pca, n_components_mcca, r, pca_only=True)
                 mcca.obtain_mcca(data_averaged[j])
                 X_mcca = mcca.transform_trials_pca(X[i], subject=i).reshape((len(y[i]), -1))
             elif mode == 'sensorspace':
@@ -69,19 +67,19 @@ def intra_subject_decoder(n_components_pca=50, n_components_mcca=10, reg=False, 
             BAs.append(balanced_accuracy_score(y_test, y_pred))
     y_true_all = np.concatenate(y_true_all)
     y_pred_all = np.concatenate(y_pred_all)
-    reg_str = '_reg' + str(r) if reg else ''
+    reg_str = '_reg' + str(r) if r else ''
     save = save_path + save_fn + reg_str + ".npz"
     np.savez(save, y_true=y_true_all, y_pred=y_pred_all, scores=BAs)
 
 
-def _load_data(tSSS_realignment=False, n_folds=5):
+def _load_data(tsss_realignment=False, n_folds=5):
     """
     Splits data from each subject into 80% training and 20% testing. MCCA is applied
     to averaged training data from all subjects, and the weights are used to transform
     all single-trial data into MCCA space.
 
     Parameters:
-        tSSS_realignment (bool): Whether to use tSSS realignment
+        tsss_realignment (bool): Whether to use tSSS realignment
 
         n_folds (int): Number of cross-validation folds
 
@@ -103,7 +101,7 @@ def _load_data(tSSS_realignment=False, n_folds=5):
     train_indices = [[] for _ in range(n_folds)]
     test_indices = [[] for _ in range(n_folds)]
     data_averaged = [[] for _ in range(n_folds)]
-    X_, y_ = prepare_data.load_single_trial_data(tSSS_realignment=tSSS_realignment)
+    X_, y_ = prepare_data.load_single_trial_data(tsss_realignment=tsss_realignment)
     n_subjects = len(y_)
     for i in range(n_subjects):
         data_st, labels = X_[i], y_[i]
