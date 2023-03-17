@@ -1,6 +1,6 @@
 # MCCA
 
-This repository reproduces the results from the paper "Inter-individual single-trial classification of MEG data using M-CCA". Results reported in the paper were computed without setting the random state of solvers. This has been fixed by setting the random seed for solvers to 0 in this repo. Consequently, results from this repo may be slightly different (at most +/- 0.01 balanced accuracy) than results reported in the paper. The final version of the paper will have its numbers and figures updated to exactly match the results in this repo.
+This repository reproduces the results from the paper "Inter-individual single-trial classification of MEG data using M-CCA".
 
 ## Folder structure
 
