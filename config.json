@@ -1,6 +1,0 @@
-{
-    "data_folder": "./data/",
-    "raw_folder": "",
-    "results_folder": "./results/",
-    "cache_dir": "./joblib/"
-}

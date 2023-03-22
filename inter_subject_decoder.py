@@ -9,10 +9,10 @@ from sklearn.model_selection import StratifiedShuffleSplit
 
 import prepare_data
 from MCCA_transformer import MCCATransformer
+from config import CONFIG
 
 
-def inter_subject_decoder(n_components_pca=50, n_components_mcca=10, r=0, tsss_realignment=False,
-                          save_fn='online', folder="inter_subject", new_subject_trials='nested_cv', mode='MCCA'):
+def inter_subject_decoder():
     """ Inter-subject decoder using leave-one-subject-out cross-validation
 
     MCCA is computed based on averaged data from all but one subjects. MCCA projection weights
@@ -23,38 +23,11 @@ def inter_subject_decoder(n_components_pca=50, n_components_mcca=10, r=0, tsss_r
     Inter-subject classifiers are trained on all but one subject and tested on the
     left-out subject.
 
-    Parameters:
-        n_components_pca (int): Number of PCA components to retain for each subject (default 50)
-
-        n_components_mcca (int): Number of MCCA components to retain (default 10)
-
-        r (int/float): Regularization strength. (default 0)
-
-        tsss_realignment (bool): Whether to use tSSS realignment
-
-        save_fn (str): Filename to save results
-
-        folder (str): Folder to save results in
-
-        new_subject_trials (str/int): Specifies which trials from new / left-out subject to use for estimating
-                                      projection weights from new subject into the shared MCCA space of previous
-                                      subjects. Must be one of ['all', 'nested_cv', 'split'] or int.
-                'all': Use all trials from new / left-out subject
-                'nested_cv': Use nested 5-fold cross-validation
-                'split': Use 50 % train / 50 % test split
-                int: Use this many training trials per class, the rest is used for testing
-
-        mode (str): Feature space to use for decoding. Must be one of ['MCCA', 'PCA', 'sensorspace']
-
     """
-    save_folder = prepare_data.results_folder + folder + '/'
-    if not os.path.exists(save_folder):
-        os.makedirs(save_folder)
-    reg_str = '_reg' + str(r) if r else ''
-    save = save_folder + save_fn + reg_str + '.npz'
+    save = CONFIG.results_folder + CONFIG.save_fn + '.npz'
     print(save)
 
-    X, y = prepare_data.load_single_trial_data(tsss_realignment=tsss_realignment)
+    X, y = prepare_data.load_single_trial_data(tsss_realignment=CONFIG.tsss_realignment)
 
     n_subjects = y.shape[0]
     y_true_all = []
@@ -62,8 +35,7 @@ def inter_subject_decoder(n_components_pca=50, n_components_mcca=10, r=0, tsss_r
     BAs = []
 
     for i in range(n_subjects):
-        X_train, X_test, y_train, y_test = _transform_data(X, y, i, r, n_components_pca, n_components_mcca, mode,
-                                                           new_subject_trials)
+        X_train, X_test, y_train, y_test = _transform_data(X, y, i)
         clf = LogisticRegression(multi_class='ovr', solver='liblinear', penalty='l2', random_state=0)
         # clf = LogisticRegression(multi_class='multinomial', solver='lbfgs', penalty='l2', random_state=0)
         # model = xgb.XGBClassifier(n_jobs=1)
@@ -81,8 +53,7 @@ def inter_subject_decoder(n_components_pca=50, n_components_mcca=10, r=0, tsss_r
     np.savez(save, y_true=y_true_all, y_pred=y_pred_all, scores=BAs)
 
 
-def _transform_data(X, y, left_out_subject, r, n_components_pca, n_components_mcca, mode='MCCA',
-                    new_subject_trials='nested_cv', permute=False, seed=0):
+def _transform_data(X, y, left_out_subject, permute=False, seed=0):
     """
     Apply MCCA to averaged data from all but one subjects. MCCA projection
     weights are estimated via linear regression from the trial-averaged
@@ -94,22 +65,6 @@ def _transform_data(X, y, left_out_subject, r, n_components_pca, n_components_mc
         X (ndarray): The training data (subjects x trials x samples x channels)
 
         y (ndarray): Labels corresponding to trials in X. (subjects x trials)
-
-        n_components_pca (int): Number of PCA components to retain for each subject (default 50)
-
-        n_components_mcca (int): Number of MCCA components to retain (default 10)
-
-        r (int/float): Regularization strength. (default 0)
-
-        new_subject_trials (str/int): Specifies which trials from new / left-out subject to use for estimating
-                                      projection weights from new subject into the shared MCCA space of previous
-                                      subjects. Must be one of ['all', 'nested_cv', 'split'] or int.
-                'all': Use all trials from new / left-out subject
-                'nested_cv': Use nested 5-fold cross-validation
-                'split': Use 50 % train / 50 % test split
-                int: Use this many training trials per class, the rest is used for testing
-
-        mode (str): Feature space to use for decoding. Must be one of ['MCCA', 'PCA', 'sensorspace']
 
         permute (bool): Whether to shuffle labels for permutation testing
 
@@ -134,30 +89,30 @@ def _transform_data(X, y, left_out_subject, r, n_components_pca, n_components_mc
         y = _random_permutation(y, seed)
     n_subjects = y.shape[0]
     leave_one_out = np.setdiff1d(np.arange(n_subjects), left_out_subject)
-    transformer = MCCATransformer(n_components_pca, n_components_mcca, r, new_subject_trials == 'nested_cv')
-    if mode == 'MCCA':
+    transformer = MCCATransformer(CONFIG.n_pcs, CONFIG.n_ccs, CONFIG.r, CONFIG.new_subject_trials == 'nested_cv')
+    if CONFIG.mode == 'MCCA':
         X_train = transformer.fit_transform(X[leave_one_out], y[leave_one_out], )
         y_train = np.concatenate(y[leave_one_out], axis=0)
         X_left_out = X[left_out_subject]
         y_left_out = y[left_out_subject]
 
-        if new_subject_trials == 'all':
+        if CONFIG.new_subject_trials == 'all':
             X_test = transformer.fit_transform_online(X_left_out, y_left_out)
             y_test = y_left_out
-        elif new_subject_trials == 'nested_cv':
+        elif CONFIG.new_subject_trials == 'nested_cv':
             X_test, y_test = transformer.fit_transform_online(X_left_out, y_left_out)
         else:
-            if new_subject_trials == 'split':
+            if CONFIG.new_subject_trials == 'split':
                 sss = StratifiedShuffleSplit(n_splits=1, test_size=0.5, random_state=0)
                 train, test = next(sss.split(X_left_out, y_left_out))
             else:
-                sss = StratifiedShuffleSplit(n_splits=1, train_size=new_subject_trials * 3,
+                sss = StratifiedShuffleSplit(n_splits=1, train_size=CONFIG.new_subject_trials * 3,
                                              test_size=None, random_state=0)
                 train, test = next(sss.split(X_left_out, y_left_out))
             transformer.fit_online(X_left_out[train], y_left_out[train])
             X_test = transformer.transform_online(X_left_out[test])
             y_test = y_left_out[test]
-    elif mode == 'PCA':
+    elif CONFIG.mode == 'PCA':
         transformer.fit(X[leave_one_out], y[leave_one_out])
         X_train = transformer.transform_pca_only(X[leave_one_out])
         y_train = np.concatenate(y[leave_one_out], axis=0)
@@ -166,7 +121,7 @@ def _transform_data(X, y, left_out_subject, r, n_components_pca, n_components_mc
         transformer.fit_online(X_left_out, y_left_out)
         X_test = transformer.transform_online_pca_only(X_left_out)
         y_test = y_left_out
-    elif mode == 'sensorspace':
+    elif CONFIG.mode == 'sensorspace':
         X_train = np.concatenate([X[i] for i in leave_one_out])
         X_train = X_train.reshape((X_train.shape[0], -1))
         X_train = _standardize(X_train, axes=(1,)).astype(np.float64)
@@ -195,8 +150,7 @@ def _standardize(x, axes=(2,)):
     return (x - mean_) / std_
 
 
-def permutation_test(n_permutations, start_id=0, n_components_pca=50, n_components_mcca=10, r=0,
-                     tsss_realignment=False, save_fn='permutation', n_jobs=-1):
+def permutation_test(n_permutations, start_id=0, n_jobs=-1):
     """ Parallelized permutation test of inter-subject decoder
 
     Parameters:
@@ -204,41 +158,30 @@ def permutation_test(n_permutations, start_id=0, n_components_pca=50, n_componen
 
         start_id: Start seed for shuffling labels (default 0)
 
-        n_components_pca (int): Number of PCA components to retain for each subject (default 50)
-
-        n_components_mcca (int): Number of MCCA components to retain (default 10)
-
-        r (int/float): Regularization strength. (default 0)
-
-        tsss_realignment (bool): Whether to use tSSS realignment
-
-        save_fn (str): Filename to save results
-
         n_jobs (int): Number of jobs to use for parallel execution
 
     """
-    save_folder = prepare_data.results_folder + 'permutation_test/temp/' + save_fn + '/'
+    save_folder = CONFIG.results_folder + 'permutation_test/temp/' + CONFIG.save_fn + '/'
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
 
-    X, y = prepare_data.load_single_trial_data(tsss_realignment=tsss_realignment)
-    save_path_observed = save_folder + save_fn + '_observed.npz'
-    _leave_one_out_cv(X, y, False, None, save_path_observed, n_components_pca, n_components_mcca, r)
+    X, y = prepare_data.load_single_trial_data(tsss_realignment=CONFIG.tsss_realignment)
+    save_path_observed = save_folder + CONFIG.save_fn + '_observed.npz'
+    _leave_one_out_cv(X, y, False, None, save_path_observed)
 
     from joblib import dump, load
-    mmap_fn = prepare_data.results_folder + 'permutation_test/temp/X.mmap'
+    mmap_fn = CONFIG.results_folder + 'permutation_test/temp/X.mmap'
     if not os.path.exists(mmap_fn):
         dump(X, mmap_fn)
     X = load(mmap_fn, mmap_mode='r')
     import gc
     gc.collect()
-    save_path = save_folder + save_fn + '_perm%d.npz'
+    save_path = save_folder + CONFIG.save_fn + '_perm%d.npz'
     Parallel(n_jobs=n_jobs, backend='loky', verbose=100, mmap_mode='r') \
-        (delayed(_leave_one_out_cv)(X, y, True, i + start_id, save_path, n_components_pca,
-                                    n_components_mcca, r) for i in range(n_permutations))
+        (delayed(_leave_one_out_cv)(X, y, True, i + start_id, save_path) for i in range(n_permutations))
 
 
-def _leave_one_out_cv(X, y, perm, seed, save, n_components_pca, n_components_mcca, r):
+def _leave_one_out_cv(X, y, perm, seed, save):
     """ Wraps leave-one-subject-out cross-validation loop for parallelization in permutation test. """
     if perm:
         save = save % seed
@@ -250,8 +193,7 @@ def _leave_one_out_cv(X, y, perm, seed, save, n_components_pca, n_components_mcc
     y_pred_all = []
     BAs = []
     for i in range(n_subjects):
-        X_train, X_test, y_train, y_test = _transform_data(X, y, i, r, n_components_pca, n_components_mcca,
-                                                           permute=perm, seed=seed)
+        X_train, X_test, y_train, y_test = _transform_data(X, y, i, permute=perm, seed=seed)
         clf = LogisticRegression(multi_class='ovr', solver='liblinear', penalty='l2', random_state=0)
         # clf = LogisticRegression(multi_class='multinomial', solver='lbfgs', penalty='l2', random_state=0)
         clf.fit(X_train, y_train)

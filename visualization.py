@@ -4,14 +4,14 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-import prepare_data
+from config import CONFIG
 from scoring import plot_confusion_matrix
 
 
 def visualize_permutation_test(save_fn='permutation', normalize=False,
                                folder_name='permutation_test'):
     """ Histogram plot for permutation test results. """
-    save_folder = prepare_data.results_folder + folder_name + '/'
+    save_folder = CONFIG.results_folder + folder_name + '/'
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
     save_path = save_folder + save_fn + '_'
@@ -74,9 +74,9 @@ def visualize_permutation_test(save_fn='permutation', normalize=False,
     fig.savefig(save_path + 'hist', format='svg')
 
 
-def visualize_online(save_fn='online_performance', folder="inter_subject"):
+def visualize_online():
     """ Balanced accuracy vs number of trials plot for simulated online decoding results. """
-    save_folder = prepare_data.results_folder + folder + '/'
+    save_folder = CONFIG.results_folder
     result_folder = save_folder + 'online/'
     if not os.path.exists(result_folder):
         os.makedirs(result_folder)
@@ -106,19 +106,19 @@ def visualize_online(save_fn='online_performance', folder="inter_subject"):
     ax.set_ylabel('Balanced accuracy')
     fig.tight_layout()
     plt.show()
-    fig.savefig(save_folder + save_fn, format='svg')
+    fig.savefig(save_folder + CONFIG.save_fn, format='svg')
 
 
-def visualize_decoder(save_fn='online', folder="inter_subject"):
+def visualize_decoder():
     """ Plot confusion matrix for decoding results. """
-    save_folder = prepare_data.results_folder + folder + '/'
+    save_folder = CONFIG.results_folder
     if not os.path.exists(save_folder):
         os.makedirs(save_folder)
-    temp_file = save_folder + save_fn + '.npz'
+    temp_file = save_folder + CONFIG.save_fn + '.npz'
     if os.path.exists(temp_file):
         npzfile = np.load(temp_file)
         y_true = npzfile['y_true']
         y_pred = npzfile['y_pred']
         BAs = npzfile['scores']
-        save = save_folder + save_fn + '_cm'
+        save = save_folder + CONFIG.save_fn + '_cm'
         plot_confusion_matrix(y_true, y_pred, ['bottle', 'pencil', 'cup'], save=save, scores=BAs)

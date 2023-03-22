@@ -1,0 +1,17 @@
+data_folder: ./data/
+cache_dir: ./joblib/
+results_folder: ./results/test/
+save_fn: test # Filename to save results
+mode: MCCA # Feature space to use for decoding. Must be one of ['MCCA', 'PCA', 'sensorspace']
+n_pcs: 50 # Number of PCA components to retain for each subject (int)
+n_ccs: 10 # Number of MCCA components to retain (int)
+r: 0 # Regularization strength. (int / float)
+# Specifies which trials from new / left-out subject to use for estimating
+# projection weights from new subject into the shared MCCA space of previous
+# subjects. Must be one of ['all', 'nested_cv', 'split'] or int.
+#     'all': Use all trials from new / left-out subject
+#     'nested_cv': Use nested 5-fold cross-validation
+#     'split': Use 50 % train / 50 % test split
+#     int: Use this many training trials per class, the rest is used for testing
+new_subject_trials: nested_cv
+tsss_realignment: false # Whether to use tSSS realignment

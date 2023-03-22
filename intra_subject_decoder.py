@@ -1,5 +1,3 @@
-import os
-
 import numpy as np
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import balanced_accuracy_score
@@ -7,10 +5,10 @@ from sklearn.model_selection import StratifiedKFold
 
 import prepare_data
 from MCCA import MCCA
+from config import CONFIG
 
 
-def intra_subject_decoder(n_components_pca=50, n_components_mcca=10, r=0, tsss_realignment=False, n_folds=5,
-                          save_fn='intra_subject', mode='MCCA'):
+def intra_subject_decoder(n_folds=5):
     """
     Splits data from each subject into 80% training and 20% testing. MCCA is applied
     to averaged training data from all subjects, and the weights are used to transform
@@ -18,40 +16,25 @@ def intra_subject_decoder(n_components_pca=50, n_components_mcca=10, r=0, tsss_r
     single-trial data in MCCA space for each subject and the results are saved to file.
 
     Parameters:
-        n_components_pca (int): Number of PCA components to retain for each subject (default 50)
-
-        n_components_mcca (int): Number of MCCA components to retain (default 10)
-
-        r (int/float): Regularization strength. (default 0)
-
-        tsss_realignment (bool): Whether to use tSSS realignment
-
         n_folds (int): Number of cross-validation folds
 
-        save_fn (str): Filename to save results
-
-        mode (str): Feature space to use for decoding. Must be one of ['MCCA', 'PCA', 'sensorspace']
-
     """
-    save_path = prepare_data.results_folder + 'intra_subject/'
-    if not os.path.exists(save_path):
-        os.makedirs(save_path)
-    X, y, train, test, data_averaged = _load_data(tsss_realignment=tsss_realignment, n_folds=n_folds)
+    X, y, train, test, data_averaged = _load_data(n_folds=n_folds)
     y_true_all = []
     y_pred_all = []
     BAs = []
     n_subjects = len(y)
     for i in range(n_subjects):
         for j in range(n_folds):
-            if mode == 'MCCA':
-                mcca = MCCA(n_components_pca, n_components_mcca, r)
+            if CONFIG.mode == 'MCCA':
+                mcca = MCCA(CONFIG.n_pcs, CONFIG.n_ccs, CONFIG.r)
                 mcca.obtain_mcca(data_averaged[j])
                 X_mcca = mcca.transform_trials(X[i], subject=i).reshape((len(y[i]), -1))
-            elif mode == 'PCA':
-                mcca = MCCA(n_components_pca, n_components_mcca, r, pca_only=True)
+            elif CONFIG.mode == 'PCA':
+                mcca = MCCA(CONFIG.n_pcs, CONFIG.n_ccs, CONFIG.r, pca_only=True)
                 mcca.obtain_mcca(data_averaged[j])
                 X_mcca = mcca.transform_trials_pca(X[i], subject=i).reshape((len(y[i]), -1))
-            elif mode == 'sensorspace':
+            elif CONFIG.mode == 'sensorspace':
                 X_mcca = X[i].reshape((len(y[i]), -1))
             else:
                 raise Exception('Mode must be one of [MCCA, PCA, sensorspace].')
@@ -67,20 +50,17 @@ def intra_subject_decoder(n_components_pca=50, n_components_mcca=10, r=0, tsss_r
             BAs.append(balanced_accuracy_score(y_test, y_pred))
     y_true_all = np.concatenate(y_true_all)
     y_pred_all = np.concatenate(y_pred_all)
-    reg_str = '_reg' + str(r) if r else ''
-    save = save_path + save_fn + reg_str + ".npz"
+    save = CONFIG.results_folder + CONFIG.save_fn + ".npz"
     np.savez(save, y_true=y_true_all, y_pred=y_pred_all, scores=BAs)
 
 
-def _load_data(tsss_realignment=False, n_folds=5):
+def _load_data(n_folds=5):
     """
     Splits data from each subject into 80% training and 20% testing. MCCA is applied
     to averaged training data from all subjects, and the weights are used to transform
     all single-trial data into MCCA space.
 
     Parameters:
-        tsss_realignment (bool): Whether to use tSSS realignment
-
         n_folds (int): Number of cross-validation folds
 
     Returns:
@@ -101,7 +81,7 @@ def _load_data(tsss_realignment=False, n_folds=5):
     train_indices = [[] for _ in range(n_folds)]
     test_indices = [[] for _ in range(n_folds)]
     data_averaged = [[] for _ in range(n_folds)]
-    X_, y_ = prepare_data.load_single_trial_data(tsss_realignment=tsss_realignment)
+    X_, y_ = prepare_data.load_single_trial_data(tsss_realignment=CONFIG.tsss_realignment)
     n_subjects = len(y_)
     for i in range(n_subjects):
         data_st, labels = X_[i], y_[i]

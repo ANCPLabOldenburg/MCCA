@@ -4,7 +4,12 @@ from inter_subject_decoder import inter_subject_decoder, permutation_test
 from intra_subject_decoder import intra_subject_decoder
 from visualization import visualize_decoder, visualize_online, visualize_permutation_test
 
+
 tic = time.time()
+
+inter_subject_decoder()
+visualize_decoder()
+
 # Calculation for intra-subject decoder and confusion matrix
 # intra_subject_decoder(save_fn='intra_subject2', tsss_realignment=False)
 # visualize_decoder(save_fn='intra_subject2', folder="intra_subject")
@@ -21,8 +26,8 @@ tic = time.time()
 # inter_subject_decoder2(save_fn='MCCA_include_all', tsss_realignment=False)
 # visualize_decoder(save_fn='MCCA_include_all')
 
-inter_subject_decoder(n_components_pca=50, n_components_mcca=10, save_fn='MCCA_test', tsss_realignment=False, r=1)
-visualize_decoder(save_fn='MCCA_test')
+# inter_subject_decoder(n_components_pca=50, n_components_mcca=10, save_fn='MCCA_test', tsss_realignment=False, r=1)
+# visualize_decoder(save_fn='MCCA_test')
 
 # Calculation for intra-subject decoder and confusion matrix
 # intra_subject_decoder(save_fn='intra_subject', tsss_realignment=False)
