@@ -36,7 +36,8 @@ class Config:
             # Find commit hash in config file
             idx = -1
             for i, line in enumerate(lines):
-                if line.startswith("commit_hash: "):
+                words = line.split()
+                if len(words) > 1 and words[0] == "commit_hash:":
                     idx = i
                     break
 
