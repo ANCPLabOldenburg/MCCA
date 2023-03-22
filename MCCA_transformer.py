@@ -67,7 +67,6 @@ class MCCATransformer(BaseEstimator, TransformerMixin):
         pca_averaged = np.squeeze(pca_averaged)
         # Fit PCA of the new subject to average CCA from training data
         self.MCCA_new_subject.mcca_weights = np.dot(np.linalg.pinv(pca_averaged), self.cca_averaged)[np.newaxis]
-        self.MCCA_new_subject.mcca_fitted = True
         return self
 
     def transform_online(self, X):

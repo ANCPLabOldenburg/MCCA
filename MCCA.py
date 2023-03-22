@@ -87,7 +87,7 @@ class MCCA:
         Returns:
             mcca_scores (ndarray): Input data in MCCA space (subjects, samples, MCCAs).
         """
-        # R is a block matrix containing all cross-covariances R_kl = X_k^T X_l
+        # R is a block matrix containing all cross-covariances R_kl = X_k^T X_l between subjects k, l
         # S is a block diagonal matrix containing auto-correlations R_kk = X_k^T X_k in its diagonal blocks
         R, S = _compute_cross_covariance(pca_scores)
         # Regularization
@@ -101,17 +101,15 @@ class MCCA:
         # Obtain MCCA solution by solving the generalized eigenvalue problem
         # (R - S) h^i = p^i S h^i
         # where h^i is the concatenation of i-th eigenvectors of all subjects and
-        # p^i is the i-th generalized eigenvalue (i-th canonical correlation).
+        # p^i is the i-th generalized eigenvalue (i-th canonical correlation)
+        p, h = eigh((R - S), S, subset_by_index=(R.shape[0] - self.n_mcca, R.shape[0] - 1))
         # eigh returns eigenvalues in ascending order. To pick the k largest from a total of n eigenvalues,
         # we use subset_by_index=(n - k, n - 1).
-        p, h = eigh((R - S), S, subset_by_index=(R.shape[0] - self.n_mcca, R.shape[0] - 1))
         # Flip eigenvectors so that they are in descending order
         h = np.flip(h, axis=1)
-        # h contains large eigenvectors which are a concatenation of individual
-        # subjects' eigenvectors/MCCA transformation weights. Reshape weights into
-        # eigenvectors for individual subjects.
+        # Reshape h from (subjects * PCAs, MCCAs) to (subjects, PCAs, MCCAs)
         h = h.reshape((pca_scores.shape[0], self.n_pca, self.n_mcca))
-        # Normalize weights per subject
+        # Normalize eigenvectors per subject
         self.mcca_weights = h / norm(h, ord=2, axis=(1, 2), keepdims=True)
         return np.matmul(pca_scores, self.mcca_weights)
 
@@ -223,7 +221,7 @@ def _compute_cross_covariance(X):
         X (ndarray): PCA scores (subjects, samples, PCAs) or weights (subjects, sensors, PCAs)
 
     Returns:
-        R (ndarray): Block matrix containing all cross-covariances R_kl = X_k^T X_l
+        R (ndarray): Block matrix containing all cross-covariances R_kl = X_k^T X_l between subjects k, l
                      with shape (subjects * PCAs, subjects * PCAs)
         S (ndarray): Block diagonal matrix containing auto-correlations R_kk = X_k^T X_k in its diagonal blocks
                      with shape (subjects * PCAs, subjects * PCAs)
