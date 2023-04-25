@@ -64,7 +64,9 @@ def _transform_data(X, y, left_out_subject, permute=False, seed=0):
     Parameters:
         X (ndarray): The training data (subjects x trials x samples x channels)
 
-        y (ndarray): Labels corresponding to trials in X. (subjects x trials)
+        y (ndarray): Labels corresponding to trials in X (subjects x trials)
+
+        left_out_subject (int): Index of the left-out subject
 
         permute (bool): Whether to shuffle labels for permutation testing
 
@@ -88,6 +90,7 @@ def _transform_data(X, y, left_out_subject, permute=False, seed=0):
     if permute:
         y = _random_permutation(y, seed)
     n_subjects = y.shape[0]
+    n_classes = len(np.unique(y))
     leave_one_out = np.setdiff1d(np.arange(n_subjects), left_out_subject)
     transformer = MCCATransformer(CONFIG.n_pcs, CONFIG.n_ccs, CONFIG.r, CONFIG.new_subject_trials == 'nested_cv')
     if CONFIG.mode == 'MCCA':
@@ -96,17 +99,14 @@ def _transform_data(X, y, left_out_subject, permute=False, seed=0):
         X_left_out = X[left_out_subject]
         y_left_out = y[left_out_subject]
 
-        if CONFIG.new_subject_trials == 'all':
-            X_test = transformer.fit_transform_online(X_left_out, y_left_out)
-            y_test = y_left_out
-        elif CONFIG.new_subject_trials == 'nested_cv':
+        if CONFIG.new_subject_trials in ['all', 'nested_cv']:
             X_test, y_test = transformer.fit_transform_online(X_left_out, y_left_out)
         else:
             if CONFIG.new_subject_trials == 'split':
                 sss = StratifiedShuffleSplit(n_splits=1, test_size=0.5, random_state=0)
                 train, test = next(sss.split(X_left_out, y_left_out))
             else:
-                sss = StratifiedShuffleSplit(n_splits=1, train_size=CONFIG.new_subject_trials * 3,
+                sss = StratifiedShuffleSplit(n_splits=1, train_size=CONFIG.new_subject_trials * n_classes,
                                              test_size=None, random_state=0)
                 train, test = next(sss.split(X_left_out, y_left_out))
             transformer.fit_online(X_left_out[train], y_left_out[train])

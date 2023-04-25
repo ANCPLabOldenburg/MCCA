@@ -88,7 +88,7 @@ class MCCATransformer(BaseEstimator, TransformerMixin):
                 ys.append(y[test])
             return np.concatenate(Xs), np.concatenate(ys)
         else:
-            return self.fit_online(X, y).transform_online(X)
+            return self.fit_online(X, y).transform_online(X), y
 
     def transform_pca_only(self, X):
         """ 

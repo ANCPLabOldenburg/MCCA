@@ -21,7 +21,7 @@ class MCCA:
         pca_only (bool): If true, skip MCCA calculation (default False)
 
     Attributes:
-        mu (ndarray): PCA mean (subjects, PCs)
+        mu (ndarray): Mean subtracted before PCA (subjects, sensors)
 
         sigma (ndarray): PCA standard deviation (subjects, PCs)
 
@@ -195,14 +195,14 @@ class MCCA:
             raise NotFittedError('MCCA needs to be fitted before calling test_mcca')
         t_mu = self.mu[:, np.newaxis]
         t_sigma = self.sigma[:, np.newaxis]
-        data_train -= t_mu  # centered
-        pca_train = np.matmul(data_train, self.pca_weights)  # PCAs obtained
-        pca_train /= t_sigma  # normalized
-        mcca_train = np.matmul(pca_train, self.mcca_weights)  # MCCAs obtained
-        data_test -= t_mu  # centered
-        pca_test = np.matmul(data_test, self.pca_weights)  # PCAs obtained
-        pca_test /= t_sigma  # normalized
-        mcca_test = np.matmul(pca_test, self.mcca_weights)  # MCCAs obtained
+        data_train -= t_mu
+        pca_train = np.matmul(data_train, self.pca_weights)
+        pca_train /= t_sigma
+        mcca_train = np.matmul(pca_train, self.mcca_weights)
+        data_test -= t_mu
+        pca_test = np.matmul(data_test, self.pca_weights)
+        pca_test /= t_sigma
+        mcca_test = np.matmul(pca_test, self.mcca_weights)
 
         K = self.mcca_weights.shape[2]
         correlations = np.zeros((K, 2))
@@ -232,4 +232,5 @@ def _compute_cross_covariance(X):
     n_subjects, n_samples, n_pcs = X.shape
     R = np.cov(X.swapaxes(1, 2).reshape(n_subjects * n_pcs, n_samples))
     R_kk = R * np.kron(np.eye(n_subjects), np.ones((n_pcs, n_pcs)))
-    return R - R_kk, R_kk
+    R_kl = R - R_kk
+    return R_kl, R_kk
