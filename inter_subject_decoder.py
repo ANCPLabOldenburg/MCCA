@@ -90,7 +90,7 @@ def _transform_data(X, y, left_out_subject, permute=False, seed=0):
     if permute:
         y = _random_permutation(y, seed)
     n_subjects = y.shape[0]
-    n_classes = len(np.unique(y))
+    n_classes = len(np.unique(y[0]))
     leave_one_out = np.setdiff1d(np.arange(n_subjects), left_out_subject)
     transformer = MCCATransformer(CONFIG.n_pcs, CONFIG.n_ccs, CONFIG.r, CONFIG.new_subject_trials == 'nested_cv')
     if CONFIG.mode == 'MCCA':
